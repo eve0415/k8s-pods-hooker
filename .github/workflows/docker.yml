@@ -9,6 +9,9 @@ concurrency:
   group: docker
   cancel-in-progress: true
 
+permissions:
+  packages: write
+
 jobs:
   build:
     name: Build
@@ -24,7 +27,7 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: eve0415
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate Docker meta
