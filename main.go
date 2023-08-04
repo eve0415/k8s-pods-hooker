@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -42,8 +43,6 @@ func main() {
 			return
 		}
 
-		log.Println("Updating image: ", body.Name, " with tag: ", body.Tag)
-
 		deployments, err := clientSet.AppsV1().Deployments("default").List(context.Background(), v1.ListOptions{Limit: 50})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -51,11 +50,12 @@ func main() {
 		}
 
 		for _, deployment := range deployments.Items {
-			imageName := deployment.Spec.Template.Spec.Containers[0].Image
+			imageName := strings.Split(deployment.Spec.Template.Spec.Containers[0].Image, ":")[0]
 			log.Println("Image name: ", imageName)
 
 			if imageName == body.Name {
-				// Update deployment
+				log.Println("Updating deployment: ", deployment.Name, " with image: ", imageName+":"+body.Tag)
+				deployment.Spec.Template.Spec.Containers[0].Image = imageName + ":" + body.Tag
 				_, err := clientSet.AppsV1().Deployments("default").Update(context.Background(), &deployment, v1.UpdateOptions{})
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
