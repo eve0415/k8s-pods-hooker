@@ -9,5 +9,6 @@ RUN CGO_ENABLED=0 go build -o api
 FROM gcr.io/distroless/static-debian11:nonroot
 LABEL authors="eve0415"
 COPY --link --from=build /app/api /
+ENV GIN_MODE release
 EXPOSE 8080
 CMD ["/api"]
