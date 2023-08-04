@@ -54,7 +54,7 @@ func main() {
 			log.Println("Image name: ", imageName)
 
 			if imageName == body.Name {
-				log.Println("Updating deployment: ", deployment.Name, " with image: ", imageName+":"+body.Tag)
+				log.Println("Updating deployment:", deployment.Name, "with image:", imageName+":"+body.Tag)
 				deployment.Spec.Template.Spec.Containers[0].Image = imageName + ":" + body.Tag
 				_, err := clientSet.AppsV1().Deployments("default").Update(context.Background(), &deployment, v1.UpdateOptions{})
 				if err != nil {
