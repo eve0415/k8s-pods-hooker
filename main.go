@@ -44,9 +44,10 @@ func main() {
 
 		log.Println("Updating image: ", body.Name, " with tag: ", body.Tag)
 
-		deployments, err := clientSet.AppsV1().Deployments("default").List(context.Background(), v1.ListOptions{})
+		deployments, err := clientSet.AppsV1().Deployments("default").List(context.Background(), v1.ListOptions{Limit: 50})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
 
 		for _, deployment := range deployments.Items {
@@ -58,6 +59,7 @@ func main() {
 				_, err := clientSet.AppsV1().Deployments("default").Update(context.Background(), &deployment, v1.UpdateOptions{})
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
 				}
 			}
 		}
