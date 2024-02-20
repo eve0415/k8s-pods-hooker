@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1Meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"log"
@@ -17,9 +17,10 @@ import (
 	"time"
 )
 
-type UpdateDeploymentRequest struct {
-	Name string `json:"name"`
-	Tag  string `json:"tag"`
+type UpdateDeploymentRequestBody struct {
+	NameSpace string `json:"namespace"`
+	ImageName string `json:"name" binding:"required"`
+	Tag       string `json:"tag" binding:"required"`
 }
 
 func main() {
@@ -37,13 +38,16 @@ func main() {
 
 	router := gin.Default()
 	router.POST("/rollout", func(c *gin.Context) {
-		body := UpdateDeploymentRequest{}
+		body := UpdateDeploymentRequestBody{}
 		if err := c.ShouldBindJSON(&body); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if body.NameSpace == "" {
+			body.NameSpace = "default"
+		}
 
-		deployments, err := clientSet.AppsV1().Deployments("default").List(context.Background(), v1.ListOptions{Limit: 50})
+		deployments, err := clientSet.AppsV1().Deployments(body.NameSpace).List(context.Background(), v1Meta.ListOptions{Limit: 50})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -51,12 +55,10 @@ func main() {
 
 		for _, deployment := range deployments.Items {
 			imageName := strings.Split(deployment.Spec.Template.Spec.Containers[0].Image, ":")[0]
-			log.Println("Image name: ", imageName)
-
-			if imageName == body.Name {
+			if imageName == body.ImageName {
 				log.Println("Updating deployment:", deployment.Name, "with image:", imageName+":"+body.Tag)
 				deployment.Spec.Template.Spec.Containers[0].Image = imageName + ":" + body.Tag
-				_, err := clientSet.AppsV1().Deployments("default").Update(context.Background(), &deployment, v1.UpdateOptions{})
+				_, err := clientSet.AppsV1().Deployments(body.NameSpace).Update(context.Background(), &deployment, v1Meta.UpdateOptions{})
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
@@ -86,11 +88,11 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatal("Server Shutdown:", err)
+		log.Fatal("Server Shutdown Error:", err)
 	}
 	select {
 	case <-ctx.Done():
-		log.Println("timeout of 5 seconds.")
+		log.Println("Timeout of 5 seconds.")
 	}
 	log.Println("Server exiting")
 }
