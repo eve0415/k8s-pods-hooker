@@ -53,9 +53,11 @@ func main() {
 			return
 		}
 
+		var found bool
 		for _, deployment := range deployments.Items {
 			imageName := strings.Split(deployment.Spec.Template.Spec.Containers[0].Image, ":")[0]
 			if imageName == body.ImageName {
+				found = true
 				log.Println("Updating deployment:", deployment.Name, "with image:", imageName+":"+body.Tag)
 				deployment.Spec.Template.Spec.Containers[0].Image = imageName + ":" + body.Tag
 				_, err := clientSet.AppsV1().Deployments(body.NameSpace).Update(context.Background(), &deployment, v1Meta.UpdateOptions{})
@@ -63,7 +65,13 @@ func main() {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}
+				break
 			}
+		}
+
+		if !found {
+			c.JSON(http.StatusNotFound, gin.H{"error": "No deployment found with image name: " + body.ImageName})
+			return
 		}
 
 		c.JSON(http.StatusAccepted, body)
